@@ -26,7 +26,7 @@ vantis.include_router(clientes_router)
 
 
 @vantis.get("/api/health", tags=["Sistema"])
-async def health_check():
+async def health_check() -> dict:
     return {
         "status": "ok",
         "app": settings.APP_NAME,
@@ -35,5 +35,5 @@ async def health_check():
 
 
 @vantis.get("/", tags=["Sistema"])
-async def root():
+async def root() -> dict:
     return {"message": "VANTIS ERP API", "docs": "/api/docs"}

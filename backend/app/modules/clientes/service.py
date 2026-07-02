@@ -1,32 +1,35 @@
 import uuid
 from datetime import datetime, timezone
+from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
 from app.core.security import validate_rut_chile
 from app.modules.clientes.schemas import ClienteCreate, ClienteUpdate
 
 
-async def listar_clientes(db: AsyncSession, schema: str, buscar: str = None) -> list:
+async def listar_clientes(db: AsyncSession, schema: str, buscar: Optional[str] = None) -> list:
     query = f"""
         SELECT id, rut, razon_social, nombre_fantasia, giro, email, telefono,
                direccion, comuna, region, condicion_pago, limite_credito, activo, creado_en
-        FROM \"{schema}\".clientes
+        FROM "{schema}".clientes
         WHERE activo = true
     """
+    params = {}
     if buscar:
-        query += f" AND (LOWER(razon_social) LIKE LOWER('%{buscar}%') OR rut LIKE '%{buscar}%')"
+        query += " AND (LOWER(razon_social) LIKE LOWER(:buscar) OR rut LIKE :buscar)"
+        params["buscar"] = f"%{buscar}%"
     query += " ORDER BY razon_social"
 
-    result = await db.execute(text(query))
+    result = await db.execute(text(query), params)
     rows = result.fetchall()
     return [dict(row._mapping) for row in rows]
 
 
-async def obtener_cliente(db: AsyncSession, schema: str, cliente_id: str) -> dict:
+async def obtener_cliente(db: AsyncSession, schema: str, cliente_id: str) -> Optional[dict]:
     result = await db.execute(text(f"""
         SELECT id, rut, razon_social, nombre_fantasia, giro, email, telefono,
                direccion, comuna, region, condicion_pago, limite_credito, activo, creado_en
-        FROM \"{schema}\".clientes WHERE id = :id
+        FROM "{schema}".clientes WHERE id = :id
     """), {"id": cliente_id})
     row = result.fetchone()
     return dict(row._mapping) if row else None
@@ -34,10 +37,11 @@ async def obtener_cliente(db: AsyncSession, schema: str, cliente_id: str) -> dic
 
 async def crear_cliente(db: AsyncSession, schema: str, datos: ClienteCreate) -> dict:
     if not validate_rut_chile(datos.rut):
-        return {"ok": False, "error": "RUT invalido"}
+        return {"ok": False, "error": "RUT inválido"}
 
+    # Verificar duplicado
     result = await db.execute(text(f"""
-        SELECT id FROM \"{schema}\".clientes WHERE rut = :rut
+        SELECT id FROM "{schema}".clientes WHERE rut = :rut
     """), {"rut": datos.rut})
     if result.fetchone():
         return {"ok": False, "error": "Ya existe un cliente con ese RUT"}
@@ -46,7 +50,7 @@ async def crear_cliente(db: AsyncSession, schema: str, datos: ClienteCreate) -> 
     ahora = datetime.now(timezone.utc)
 
     await db.execute(text(f"""
-        INSERT INTO \"{schema}\".clientes
+        INSERT INTO "{schema}".clientes
         (id, rut, razon_social, nombre_fantasia, giro, email, telefono,
          direccion, comuna, region, condicion_pago, limite_credito, activo, creado_en)
         VALUES (:id, :rut, :razon_social, :nombre_fantasia, :giro, :email, :telefono,
@@ -79,7 +83,7 @@ async def actualizar_cliente(db: AsyncSession, schema: str, cliente_id: str, dat
     campos["id"] = cliente_id
 
     await db.execute(text(f"""
-        UPDATE \"{schema}\".clientes SET {sets} WHERE id = :id
+        UPDATE "{schema}".clientes SET {sets} WHERE id = :id
     """), campos)
     await db.commit()
     return {"ok": True}
@@ -87,7 +91,7 @@ async def actualizar_cliente(db: AsyncSession, schema: str, cliente_id: str, dat
 
 async def eliminar_cliente(db: AsyncSession, schema: str, cliente_id: str) -> dict:
     await db.execute(text(f"""
-        UPDATE \"{schema}\".clientes SET activo = false WHERE id = :id
+        UPDATE "{schema}".clientes SET activo = false WHERE id = :id
     """), {"id": cliente_id})
     await db.commit()
     return {"ok": True}

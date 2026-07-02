@@ -36,7 +36,7 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
 
 def require_modulo(modulo: str):
     """Verifica que el plan del tenant incluya el módulo requerido."""
-    def _check(user: dict = Depends(get_current_user)):
+    def _check(user: dict = Depends(get_current_user)) -> dict:
         if modulo not in user.get("modulos", []):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -46,9 +46,9 @@ def require_modulo(modulo: str):
     return _check
 
 
-def require_rol(roles: list):
+def require_rol(roles: list[str]):
     """Verifica que el usuario tenga uno de los roles requeridos."""
-    def _check(user: dict = Depends(get_current_user)):
+    def _check(user: dict = Depends(get_current_user)) -> dict:
         if user.get("rol") not in roles:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,

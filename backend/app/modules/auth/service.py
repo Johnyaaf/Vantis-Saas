@@ -81,7 +81,7 @@ async def login(db: AsyncSession, datos: LoginRequest) -> dict:
         select(UsuarioTenant, Tenant)
         .join(Tenant, UsuarioTenant.tenant_id == Tenant.id)
         .where(UsuarioTenant.usuario_id == usuario.id)
-        .where(UsuarioTenant.activo == True)
+        .where(UsuarioTenant.activo.is_(True))
     )
     row = result.first()
 
@@ -93,7 +93,7 @@ async def login(db: AsyncSession, datos: LoginRequest) -> dict:
     result = await db.execute(
         select(ModuloPlan).where(
             ModuloPlan.plan == tenant.plan,
-            ModuloPlan.activo == True
+            ModuloPlan.activo.is_(True)
         )
     )
     modulos = [m.modulo for m in result.scalars().all()]

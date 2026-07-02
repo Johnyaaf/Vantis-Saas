@@ -1,3 +1,4 @@
+from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
@@ -10,10 +11,10 @@ router = APIRouter(prefix="/api/clientes", tags=["Clientes"])
 
 @router.get("")
 async def listar(
-    buscar: str = None,
+    buscar: Optional[str] = None,
     db: AsyncSession = Depends(get_db),
     user: dict = Depends(require_modulo("dashboard"))
-):
+) -> list:
     return await service.listar_clientes(db, user["schema"], buscar)
 
 
@@ -22,7 +23,7 @@ async def obtener(
     cliente_id: str,
     db: AsyncSession = Depends(get_db),
     user: dict = Depends(get_current_user)
-):
+) -> dict:
     cliente = await service.obtener_cliente(db, user["schema"], cliente_id)
     if not cliente:
         raise HTTPException(status_code=404, detail="Cliente no encontrado")
@@ -34,7 +35,7 @@ async def crear(
     datos: ClienteCreate,
     db: AsyncSession = Depends(get_db),
     user: dict = Depends(get_current_user)
-):
+) -> dict:
     resultado = await service.crear_cliente(db, user["schema"], datos)
     if not resultado["ok"]:
         raise HTTPException(status_code=400, detail=resultado["error"])
@@ -47,7 +48,7 @@ async def actualizar(
     datos: ClienteUpdate,
     db: AsyncSession = Depends(get_db),
     user: dict = Depends(get_current_user)
-):
+) -> dict:
     resultado = await service.actualizar_cliente(db, user["schema"], cliente_id, datos)
     if not resultado["ok"]:
         raise HTTPException(status_code=400, detail=resultado["error"])
@@ -59,5 +60,5 @@ async def eliminar(
     cliente_id: str,
     db: AsyncSession = Depends(get_db),
     user: dict = Depends(get_current_user)
-):
+) -> dict:
     return await service.eliminar_cliente(db, user["schema"], cliente_id)
