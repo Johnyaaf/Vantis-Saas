@@ -37,7 +37,7 @@ async def obtener_cliente(db: AsyncSession, schema: str, cliente_id: str) -> Opt
 
 async def crear_cliente(db: AsyncSession, schema: str, datos: ClienteCreate) -> dict:
     if not validate_rut_chile(datos.rut):
-        return {"ok": False, "error": "RUT inválido"}
+        return {"ok": False, "error": "RUT invalido"}
 
     # Verificar duplicado
     result = await db.execute(text(f"""

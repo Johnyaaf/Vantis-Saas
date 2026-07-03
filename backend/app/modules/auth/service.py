@@ -1,38 +1,46 @@
-import uuid
 import re
+import unicodedata
+import uuid
+
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, text
-from app.models.tenant import UsuarioGlobal, Tenant, UsuarioTenant, ModuloPlan
-from app.core.security import hash_password, verify_password, create_access_token, create_refresh_token, validate_rut_chile
-from app.modules.auth.schemas import RegisterRequest, LoginRequest
+
+from app.core.security import (
+    create_access_token,
+    create_refresh_token,
+    hash_password,
+    validate_rut_chile,
+    verify_password,
+)
+from app.core.tenant_schema import create_tenant_schema
+from app.models.tenant import ModuloPlan, Tenant, UsuarioGlobal, UsuarioTenant
+from app.modules.auth.schemas import LoginRequest, RegisterRequest
 
 
 def _slug_from_nombre(nombre: str) -> str:
-    slug = nombre.lower()
-    slug = re.sub(r'[áàä]', 'a', slug)
-    slug = re.sub(r'[éèë]', 'e', slug)
-    slug = re.sub(r'[íìï]', 'i', slug)
-    slug = re.sub(r'[óòö]', 'o', slug)
-    slug = re.sub(r'[úùü]', 'u', slug)
-    slug = re.sub(r'[^a-z0-9]', '-', slug)
-    slug = re.sub(r'-+', '-', slug).strip('-')
-    return slug[:40]
+    slug = unicodedata.normalize("NFKD", nombre.lower())
+    slug = "".join(char for char in slug if not unicodedata.combining(char))
+    slug = re.sub(r"[^a-z0-9]", "-", slug)
+    slug = re.sub(r"-+", "-", slug).strip("-")
+    return slug[:32] or "empresa"
 
 
 async def registrar_tenant(db: AsyncSession, datos: RegisterRequest) -> dict:
     if not validate_rut_chile(datos.rut_empresa):
-        return {"ok": False, "error": "RUT de empresa inválido"}
+        return {"ok": False, "error": "RUT de empresa invalido"}
 
     result = await db.execute(select(UsuarioGlobal).where(UsuarioGlobal.email == datos.email))
     if result.scalar_one_or_none():
-        return {"ok": False, "error": "Este email ya está registrado"}
+        return {"ok": False, "error": "Este email ya esta registrado"}
 
     result = await db.execute(select(Tenant).where(Tenant.rut == datos.rut_empresa))
     if result.scalar_one_or_none():
-        return {"ok": False, "error": "Este RUT ya está registrado"}
+        return {"ok": False, "error": "Este RUT ya esta registrado"}
 
-    slug = _slug_from_nombre(datos.nombre_empresa)
-    schema_name = f"tenant_{slug}_{str(uuid.uuid4())[:8]}"
+    slug_base = _slug_from_nombre(datos.nombre_empresa)
+    suffix = str(uuid.uuid4())[:8]
+    slug = f"{slug_base}-{suffix}"[:50]
+    schema_name = f"tenant_{slug_base.replace('-', '_')}_{suffix}"
 
     tenant = Tenant(
         slug=slug,
@@ -59,7 +67,7 @@ async def registrar_tenant(db: AsyncSession, datos: RegisterRequest) -> dict:
     )
     db.add(vinculo)
 
-    await db.execute(text(f'CREATE SCHEMA IF NOT EXISTS "{schema_name}"'))
+    await create_tenant_schema(db, schema_name)
     await db.commit()
 
     return {"ok": True, "tenant_id": tenant.id, "usuario_id": usuario.id}
@@ -72,7 +80,7 @@ async def login(db: AsyncSession, datos: LoginRequest) -> dict:
     usuario = result.scalar_one_or_none()
 
     if not usuario or not verify_password(datos.password, usuario.password_hash):
-        return {"ok": False, "error": "Credenciales inválidas"}
+        return {"ok": False, "error": "Credenciales invalidas"}
 
     if not usuario.activo:
         return {"ok": False, "error": "Usuario inactivo"}
@@ -93,7 +101,7 @@ async def login(db: AsyncSession, datos: LoginRequest) -> dict:
     result = await db.execute(
         select(ModuloPlan).where(
             ModuloPlan.plan == tenant.plan,
-            ModuloPlan.activo.is_(True)
+            ModuloPlan.activo.is_(True),
         )
     )
     modulos = [m.modulo for m in result.scalars().all()]

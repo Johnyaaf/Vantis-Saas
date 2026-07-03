@@ -1,4 +1,5 @@
 from pydantic_settings import BaseSettings
+from pydantic import Field
 from typing import List
 
 
@@ -6,7 +7,7 @@ class Settings(BaseSettings):
     # Aplicación
     APP_NAME: str = "VANTIS ERP"
     APP_VERSION: str = "1.0.0"
-    DEBUG: bool = True
+    DEBUG: bool = Field(True, validation_alias="VANTIS_DEBUG")
     SECRET_KEY: str = "vantis-secret-key-cambiar-en-produccion-2026"
 
     # Base de datos
@@ -22,7 +23,12 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
     # CORS
-    ALLOWED_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:8000"]
+    ALLOWED_ORIGINS: List[str] = [
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:8000",
+    ]
 
     model_config = {
         "env_file": ".env",
