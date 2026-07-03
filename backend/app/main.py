@@ -3,6 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.modules.auth.router import router as auth_router
 from app.modules.clientes.router import router as clientes_router
+from app.modules.proveedores.router import router as proveedores_router
+from app.modules.productos.router import router as productos_router
 
 vantis = FastAPI(
     title=settings.APP_NAME,
@@ -23,6 +25,8 @@ vantis.add_middleware(
 
 vantis.include_router(auth_router)
 vantis.include_router(clientes_router)
+vantis.include_router(proveedores_router)
+vantis.include_router(productos_router)
 
 
 @vantis.get("/api/health", tags=["Sistema"])
