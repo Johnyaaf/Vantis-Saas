@@ -5,6 +5,7 @@ from app.modules.auth.router import router as auth_router
 from app.modules.clientes.router import router as clientes_router
 from app.modules.proveedores.router import router as proveedores_router
 from app.modules.productos.router import router as productos_router
+from app.modules.ventas.router import router as ventas_router
 
 vantis = FastAPI(
     title=settings.APP_NAME,
@@ -27,6 +28,7 @@ vantis.include_router(auth_router)
 vantis.include_router(clientes_router)
 vantis.include_router(proveedores_router)
 vantis.include_router(productos_router)
+vantis.include_router(ventas_router)
 
 
 @vantis.get("/api/health", tags=["Sistema"])
